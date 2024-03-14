@@ -1,6 +1,9 @@
 import config as C
 import random
 import csv
+from pathlib import Path
+import config as C
+
 
 def get_triplet(spk_to_utts):
     """Get a triplet of anchor/pos/neg samples."""
@@ -30,7 +33,20 @@ def get_csv_spk_to_utts(csv_file):
     return spk_to_utts
 
 
+def get_librispeech_spk_to_utts(data_dir):
+    """Get the dict from speaker to list of utterances for LibriSpeech."""
+    spk_to_utts = {}
+    for subdir in Path(data_dir).iterdir():
+        if subdir.is_dir():
+            speaker = subdir.stem
+            utts = list(subdir.glob('*.wav'))
+            spk_to_utts[speaker] = utts
+    return spk_to_utts
+
+
 def main():
+    data_dir = './data/subset/by_speaker'
+    spk_to_utts = get_librispeech_spk_to_utts(data_dir)
     print('done')
 
 

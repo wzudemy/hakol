@@ -28,23 +28,21 @@ def group_file_by_speaker(csv_file, src_folder, dest_folder):
 
 def pre_process_files(src_folder, dest_folder):
     sampling_rate = 16_000
-    sampling_rate_ms = sampling_rate / 1000
+    skipped = 0
+    # sampling_rate_ms = sampling_rate / 1000
     file_list = Path(src_folder).glob('*.wav')
     model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=True)
-    (get_speech_timestamps, _, read_audio, *_) = utils
+    (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
     for file in tqdm(file_list):
-        s = AudioSegment.from_wav(file)
-        s = s.set_frame_rate(sampling_rate)
-        s = s.set_channels(1)
-        wav = torch.tensor(s.get_array_of_samples(), dtype=torch.float)
-        wav /= 20*wav.std()
+        wav = read_audio(file, sampling_rate=sampling_rate)
         speech_timestamps = get_speech_timestamps(wav, model, sampling_rate=sampling_rate)
-        for ii, chunk_limits in enumerate(speech_timestamps):
-            if ii == 0:
-                s_vad = s[chunk_limits['start']/sampling_rate_ms: chunk_limits['end']/sampling_rate_ms]
-            else:
-                s_vad.append(s[chunk_limits['start']/sampling_rate_ms: chunk_limits['end']/sampling_rate_ms])
-        s_vad.export(Path(dest_folder) / f"{file.stem + '.wav'}", format='wav')
+        try:
+            wav = collect_chunks(speech_timestamps, wav)
+
+        except:
+            print('vad failed')
+        save_audio(Path(dest_folder) / file.name, wav, sampling_rate=sampling_rate)
+
 
 
 def main():
