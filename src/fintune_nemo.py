@@ -1,25 +1,23 @@
 from config import *
+from utils.data_utils import preprocess_hackathon_files
 from utils.file_utils import group_file_by_speaker
+from utils.speaker_tasks import filelist_to_manifest
 
 
 def main():
     print("start finetuning ...")
+    
+    # preprocess the files
+    dest_folder = preprocess_hackathon_files(
+         'subset',
+         'hackathon_train_subset.csv',
+         'wav_files_subset',
+        'nemo'
+    )
 
-    # create mainfest
+    # TODO: write preprocess cv files
 
-    # copy the challenge (subset) files to the diffrent speakers folders
-    # create a manifset using the script
-    mode = "subset" # remember to chnage for 'challenge'
-    csv_file = DATA_DIR / mode / 'hackathon_train_subset.csv'
-    src_folder = DATA_DIR / mode / 'wav_files_subset'
-    dest_folder = DATA_DIR / mode / 'nemo'
-
-    group_file_by_speaker(csv_file, src_folder, dest_folder)
-
-
-    # [2] copy the cv files to the diffrent speakers folders
-    # [2] create a manifset using the script
-
+    filelist_to_manifest(dest_folder, 'manifest', -2, 'out')
 
     # create config
 

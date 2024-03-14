@@ -1,1 +1,8 @@
 pandas
+librosa
+soundfile
+tqdm
+scikit-learn
+sox
+
+# apt-get install sox

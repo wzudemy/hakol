@@ -2,6 +2,10 @@ import pandas as pd
 import shutil
 import os
 
+def write_list_to_file(lst, file_path):
+    with open(file_path, "w") as f:
+        for item in lst:
+            f.write(str(item) + "\n")
 
 def group_file_by_speaker(csv_file, src_folder, dest_folder):
     speakers = pd.read_csv(csv_file, chunksize=10)
