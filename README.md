@@ -62,3 +62,7 @@ decision = speaker_model.verify_speakers('manners.wav','king.wav')
   > SoX is the Swiss Army Knife of sound processing utilities. It can convert audio files to other popular audio file types and also apply sound effects and filters during the conversion.
 - [Audacity](https://www.audacityteam.org/)
   > Audacity is the world's most popular audio editing and recording app
+
+
+## Notes
+- export PYTHONPATH="${PYTHONPATH}:/my/other/path"
