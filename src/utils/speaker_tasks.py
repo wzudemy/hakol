@@ -44,7 +44,7 @@ import soundfile as sf
 import sox
 from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm.contrib.concurrent import process_map
-# from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
+from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 
 from utils.file_utils import write_list_to_file
 
@@ -144,8 +144,6 @@ def read_file(filelist, id=-1):
             speaker = line.split('/')[id]
             speaker = list(speaker)
             speaker = ''.join(speaker)
-            if speaker == 'spk_2':
-                print("cc")
             meta = {"audio_filepath": line, "offset": 0, "duration": None, "label": speaker}
             json_lines.append(meta)
     return json_lines
@@ -182,8 +180,7 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
         write_file(out_file, lines, range(len(lines)))
     else:
         lines = read_manifest(manifest)
-
-    lines = process_map(get_duration, lines, chunksize=100)
+        lines = process_map(get_duration, lines, chunksize=100)
 
     if create_segments:
         print(f"creating and writing segments to {CWD}")

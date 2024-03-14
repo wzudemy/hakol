@@ -11,6 +11,7 @@ def preprocess_hackathon_files(mode, csv_filelist, wav_source_folder, output_dir
     dest_folder = DATA_DIR / mode / output_dir
 
     group_file_by_speaker(csv_file, src_folder, dest_folder)
+    return dest_folder
 
     # wav_files_list = glob(os.path.join(dest_folder, "**", "*.wav"), recursive=True)
 
