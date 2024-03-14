@@ -1,0 +1,4 @@
+group_id,anchor_file,anchor_speaker,anchor_type,group_file,group_audio_speaker,group_audio_type,group_label
+0,7122144.wav,4177,background,8287341.wav,4177,background,8287341.wav
+1,1884556.wav,928,comm,3081309.wav,928,background,3081309.wav
+2,6682928.wav,3363,comm,7474942.wav,3363,background,7474942.wav
