@@ -204,6 +204,7 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
         write_file(out, lines, train_idx)
         out = os.path.join(path, 'dev.json')
         write_file(out, lines, test_idx)
+    return out_file
 
 
 if __name__ == "__main__":
