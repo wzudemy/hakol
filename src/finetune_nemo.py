@@ -1,42 +1,36 @@
+import pandas as pd
 import wandb
 import os
+import colorlog
+import logging
 
+from datetime import datetime
+
+from utils.file_utils import init_logging
 
 from omegaconf import OmegaConf
 import torch
 import pytorch_lightning as pl
 import config as C
 from src.utils.nemo_inference import verify_speakers
-from utils.data_utils import preprocess_hackathon_files
-from utils.file_utils import group_file_by_speaker
+from utils.data_utils import preprocess_data
 from utils.speaker_tasks import filelist_to_manifest
 import wget
 import nemo.collections.asr as nemo_asr
 
+init_logging(C.LOGGING_LEVEL)
+
+logger = logging.getLogger(__name__)
+
 
 def main():
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="NeSpeak-project",
-    )
-    print("start finetuning ...")
-
-    # preprocess the files
-    if 'cv-' in C.DATASET_TYPE:
-        dest_folder = preprocess_cv_files()
-    else:
-        dest_folder = preprocess_hackathon_files(
-            C.DATASET_TYPE,
-            'hackathon_train_subset.csv',
-            'wav_files_subset',
-            'nemo'
-        )
+    logger.info('start')
+    dest_folder = preprocess_data()
 
     # Convert the dest folder to manifest
     # based on
     # !python {NEMO_ROOT}/scripts/speaker_tasks/filelist_to_manifest.py --filelist {data_dir}/an4/wav/an4test_clstk/test_all.txt --id -2 --out {data_dir}/an4/wav/an4test_clstk/test.json
-
-    manifest_filename = filelist_to_manifest(dest_folder, 'manifest', -2, 'out')
+    manifest_filename = filelist_to_manifest(dest_folder, 'manifest', -2, 'out', min_count=1, max_count=3000)
 
     # TODO: change with real number
     decoder_num_classes = 10
@@ -45,15 +39,7 @@ def main():
     finetune_config = create_nemo_config(manifest_filename, C.TRAIN_BATCH_SIZE, manifest_filename, C.VALID_BATCH_SIZE,
                                          decoder_num_classes)
 
-    # TODO: replace with wandb
-    # finetune_config.exp_manager.create_tensorboard_logger = False
-    # finetune_config.exp_manager.create_
-
-    # print(OmegaConf.to_yaml(finetune_config))
-
-    # Setup the new trainer object
-    # Let us modify some trainer configs for this demo
-    # Checks if we have GPU available and uses it
+    # TODO: add wandb
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
 
     trainer_config = OmegaConf.create(dict(
@@ -78,38 +64,22 @@ def main():
 
     speaker_model.save_to(C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo")
 
-    result = verify_speakers(speaker_model,
-                             '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/928/1884556.wav',
-                             [
-                                             '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/928/8173692.wav',
-                                             '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/2533/0731480.wav',
-                                             '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/3191/1298927.wav',
-                                             '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/4177/1461122.wav',
-                                        ]
-                             )
-
-    print(result)
-
-    saved_model = 'titanet-small-finetune.nemo'
-
-    # wandb.finish()
-
-    return
-
-    # create config
-
-    os.makedirs(config_dir, exist_ok=True)
-    # url = f"https://raw.githubusercontent.com/NVIDIA/NeMo/main/examples/speaker_tasks/recognition/conf/{NEMO_MODEL_NAME}.yaml"
-    # wget.download(url, out=os.path.join(config_dir, f"{NEMO_MODEL_NAME}.yaml"))
-    # !wget -P conf https://raw.githubusercontent.com/NVIDIA/NeMo/$BRANCH/examples/speaker_tasks/recognition/conf/titanet-finetune.yaml
-
-    wget.download(url, out=model_config)
-    finetune_config = OmegaConf.load(model_config)
-    print(finetune_config)
+    # result = verify_speakers(speaker_model,
+    #                          '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/928/1884556.wav',
+    #                          [
+    #                              '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/928/8173692.wav',
+    #                              '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/2533/0731480.wav',
+    #                              '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/3191/1298927.wav',
+    #                              '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/4177/1461122.wav',
+    #                          ]
+    #                          )
+    # assert resul
+    logger.info('end')
 
 
 def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_batch_size,
                        decoder_num_classes=10, augmentor=None, strategy='auto'):
+    logger.info('start')
     config_dir = C.DATA_DIR / C.DATASET_TYPE / 'conf'
     model_config = os.path.join(config_dir, f"{C.NEMO_MODEL_NAME}.yaml")
     url = f"https://raw.githubusercontent.com/NVIDIA/NeMo/main/examples/speaker_tasks/recognition/conf/{C.NEMO_MODEL_NAME}.yaml"
@@ -130,6 +100,7 @@ def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_b
     #     "name": "NeSpeak_name",
     #     "project": f"{C.DATASET_TYPE}_{C.NEMO_MODEL_NAME}"
     # }
+    logger.info('end')
     return finetune_config
 
 

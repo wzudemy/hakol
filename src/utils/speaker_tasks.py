@@ -35,6 +35,7 @@ Args:
 import argparse
 import glob
 import json
+import logging
 import os
 import random
 
@@ -47,6 +48,8 @@ from tqdm.contrib.concurrent import process_map
 # from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 
 from utils.file_utils import write_list_to_file
+
+logger = logging.getLogger(__name__)
 
 random.seed(42)
 
@@ -103,7 +106,7 @@ def filter_manifest_line(manifest_line):
     return split_manifest
 
 
-def count_and_consider_only(speakers, lines, min_count=10):
+def count_and_consider_only(speakers, lines, min_count=10, max_count=20):
     """
     consider speakers only if samples per speaker is at least min_count
     """
@@ -112,15 +115,27 @@ def count_and_consider_only(speakers, lines, min_count=10):
     required_speakers = {}
     for idx, count in enumerate(counts):
         if count >= min_count:
+        # if min_count <= count <= max_count:
             required_speakers[uniq_speakers[idx]] = count
 
     print("speaker count after filtering minimum number of speaker counts: ", len(required_speakers))
     required_lines = []
     speakers_only = []
+    count_per_speakers ={}
+
     for idx, speaker in enumerate(speakers):
         if speaker in required_speakers:
-            required_lines.append(lines[idx])
-            speakers_only.append(speaker)
+            if speaker not in count_per_speakers:
+                count_per_speakers[speaker] = 0
+                count_per_speaker = 0
+            else:
+                count_per_speaker = count_per_speakers.get(speaker)
+
+            # limit the count to max_count
+            if count_per_speaker < max_count:
+                required_lines.append(lines[idx])
+                speakers_only.append(speaker)
+                count_per_speakers[speaker] += 1
 
     return speakers_only, required_lines
 
@@ -165,7 +180,8 @@ def get_labels(lines):
     return labels
 
 
-def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segments=False, min_count=10):
+def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segments=False, min_count=10, max_count=20):
+    logger.info('start')
     if os.path.exists(out):
         os.remove(out)
         
@@ -190,7 +206,7 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
     speakers = [x['label'] for x in lines]
 
     if min_count:
-        speakers, lines = count_and_consider_only(speakers, lines, abs(min_count))
+        speakers, lines = count_and_consider_only(speakers, lines, abs(min_count), max_count)
 
     write_file(out, lines, range(len(lines)))
     path = os.path.dirname(out)
@@ -204,42 +220,5 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
         write_file(out, lines, train_idx)
         out = os.path.join(path, 'dev.json')
         write_file(out, lines, test_idx)
+    logger.info('end')
     return out_file
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--filelist", help="path to filelist file", type=str, required=False, default=None)
-    parser.add_argument("--manifest", help="manifest file name", type=str, required=False, default=None)
-    parser.add_argument(
-        "--id",
-        help="field num seperated by '/' to be considered as speaker label from filelist file, can be ignored if manifest file is already provided with labels",
-        type=int,
-        required=False,
-        default=None,
-    )
-    parser.add_argument("--out", help="manifest_file name", type=str, required=True)
-    parser.add_argument(
-        "--split",
-        help="bool if you would want to split the manifest file for training purposes",
-        required=False,
-        action='store_true',
-    )
-    parser.add_argument(
-        "--create_segments",
-        help="bool if you would want to segment each manifest line to segments of 4 sec or less",
-        required=False,
-        action='store_true',
-    )
-    parser.add_argument(
-        "--min_spkrs_count",
-        default=0,
-        type=int,
-        help="min number of samples per speaker to consider and ignore otherwise",
-    )
-
-    args = parser.parse_args()
-
-    main(
-        args.filelist, args.manifest, args.id, args.out, args.split, args.create_segments, args.min_spkrs_count,
-    )
