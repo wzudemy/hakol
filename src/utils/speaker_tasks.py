@@ -44,7 +44,7 @@ import soundfile as sf
 import sox
 from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm.contrib.concurrent import process_map
-from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
+# from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 
 from utils.file_utils import write_list_to_file
 
@@ -173,14 +173,10 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
     filelist= os.path.join(wav_dir, 'filelist.txt')
     write_list_to_file(filelist_abspath_list, filelist)
     
-    if filelist:
-        lines = read_file(filelist=filelist, id=id)
-        lines = process_map(get_duration, lines, chunksize=100)
-        out_file = os.path.splitext(filelist)[0] + '_manifest.json'
-        write_file(out_file, lines, range(len(lines)))
-    else:
-        lines = read_manifest(manifest)
-        lines = process_map(get_duration, lines, chunksize=100)
+    lines = read_file(filelist=filelist, id=id)
+    lines = process_map(get_duration, lines, chunksize=100)
+    out_file = os.path.splitext(filelist)[0] + '_manifest.json'
+    write_file(out_file, lines, range(len(lines)))
 
     if create_segments:
         print(f"creating and writing segments to {CWD}")
