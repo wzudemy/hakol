@@ -7,7 +7,7 @@
 
 
 # Dataset
-- Chanllenge Subset (75 samples)
+- Challenge Subset (75 samples)
 
 # Output
 - speaker moedel encoder in nemo format
@@ -28,13 +28,16 @@ def run_inference(utt_list, encoder):
     return torch.stack(emb_arr).squeeze(1)
 ```
 
-# In the hackton
-- finetune on whole challenge dataset (~50k)
-- Imporvements:
-  - finetune (before/after) on cv
-  - Speakathon notebook::get_closest_speaker: compare only same gender
-  - Add noise removal
-  - Split models by the audio type (comm/noise/clean)
+
+# In the hackathon
+
+- Finetune on the whole challenge dataset (~50k).
+- Improvements:
+  - Finetune (before/after) on cross-validation.
+  - Speakathon notebook::`get_closest_speaker`: compare only with the same gender.
+  - Add noise removal.
+  - Split models by the audio type (comm/noise/clean).
+
 
 
   
