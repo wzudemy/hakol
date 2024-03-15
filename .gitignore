@@ -167,3 +167,6 @@ data/subset/conf/*
 /lightning_logs/*
 /notebooks/pretrained_models/*
 /data/*.nemo
+/data/stub/*
+/segments/*
+/logs/*
