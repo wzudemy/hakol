@@ -165,3 +165,5 @@ data/subset/conf/*
 /src/wandb/*
 /wandb/*
 /lightning_logs/*
+/notebooks/pretrained_models/*
+/data/*.nemo

@@ -17,6 +17,7 @@
 Cython
 nemo_toolkit[asr]
 wget
+plotly
 
 
 # torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121

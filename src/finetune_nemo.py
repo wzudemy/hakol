@@ -1,4 +1,6 @@
+import wandb
 import os
+
 
 from omegaconf import OmegaConf
 import torch
@@ -9,16 +11,6 @@ from utils.data_utils import preprocess_hackathon_files
 from utils.file_utils import group_file_by_speaker
 from utils.speaker_tasks import filelist_to_manifest
 import wget
-from nemo.utils.exp_manager import exp_manager
-import wandb
-
-from pytorch_lightning.loggers import WandbLogger
-
-wandb.login()
-
-# wandb_logger = WandbLogger(project="Nemo Project", log_model='all')
-
-
 import nemo.collections.asr as nemo_asr
 
 
@@ -83,6 +75,8 @@ def main():
     speaker_model = nemo_asr.models.EncDecSpeakerLabelModel(cfg=finetune_config.model, trainer=trainer_finetune)
     speaker_model.maybe_init_from_pretrained_checkpoint(finetune_config)
     trainer_finetune.fit(speaker_model)
+
+    speaker_model.save_to(C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo")
 
     result = verify_speakers(speaker_model,
                              '/home/eyalshw/github/wzudemy/hakol/data/subset/nemo/928/1884556.wav',
