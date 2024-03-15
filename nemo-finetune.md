@@ -7,7 +7,7 @@
 
 
 # Dataset
-- Chanllenge Subset
+- Chanllenge Subset (75 samples)
 
 # Output
 - speaker moedel encoder in nemo format
@@ -29,7 +29,7 @@ def run_inference(utt_list, encoder):
 ```
 
 # In the hackton
-- finetune on challenge
+- finetune on whole challenge dataset (~50k)
 - Imporvements:
   - finetune (before/after) on cv
   - Speakathon notebook::get_closest_speaker: compare only same gender
