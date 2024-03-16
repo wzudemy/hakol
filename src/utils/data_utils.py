@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 def preprocess_data():
-    filelist_csv = C.DATA_DIR / 'subset' / 'hackathon_train_subset.csv'
-    filtered_filelist_csv = C.DATA_DIR / 'subset' / 'filtered_filelist.csv'
-    src_folder = C.DATA_DIR / 'subset' / 'wav_files_subset'
-    dest_folder = C.DATA_DIR / 'subset' / 'nemo'
+    filelist_csv = C.SPEAKATHON_DATA_SUBSET / 'hackathon_train.csv'
+    filtered_filelist_csv = C.SPEAKATHON_DATA_SUBSET / 'challenge' / 'hackathon_train_filtered.csv'
+    src_folder = C.SPEAKATHON_DATA_SUBSET / 'challenge'
+    dest_folder = C.SPEAKATHON_DATA_SUBSET / 'challenge' / 'nemo'
 
     if C.STUB:
         generate_stub_dataset(src_folder, 100)
@@ -47,7 +47,7 @@ def preprocess_data():
 
     # filter the data for
     df = pd.read_csv(filelist_csv)
-    filtered_df = df.groupby(['speaker']).head(C.MAX_SPEAKERS_COUNT)
+    filtered_df = df.groupby(['speaker']).head(C.MAX_SPEAKERS_COUNT_FILTER)
     filtered_df.to_csv(filtered_filelist_csv)
 
     group_file_by_speaker(filtered_filelist_csv, src_folder, dest_folder)

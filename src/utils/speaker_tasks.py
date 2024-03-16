@@ -221,4 +221,4 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
         out = os.path.join(path, 'dev.json')
         write_file(out, lines, test_idx)
     logger.info('end')
-    return out_file
+    return out_file, speakers

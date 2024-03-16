@@ -30,10 +30,11 @@ def main():
     # Convert the dest folder to manifest
     # based on
     # !python {NEMO_ROOT}/scripts/speaker_tasks/filelist_to_manifest.py --filelist {data_dir}/an4/wav/an4test_clstk/test_all.txt --id -2 --out {data_dir}/an4/wav/an4test_clstk/test.json
-    manifest_filename = filelist_to_manifest(dest_folder, 'manifest', -2, 'out', min_count=1, max_count=3000)
+    manifest_filename, speakers = filelist_to_manifest(dest_folder, 'manifest', -2, 'out',
+                                             min_count=C.SPEAKATHON_MIN_SPEAKER_COUNT, max_count=C.SPEAKATHON_MAX_SPEAKER_COUNT)
 
     # TODO: change with real number
-    decoder_num_classes = 10
+    decoder_num_classes = len(set(speakers))
 
     # download model config
     finetune_config = create_nemo_config(manifest_filename, C.TRAIN_BATCH_SIZE, manifest_filename, C.VALID_BATCH_SIZE,

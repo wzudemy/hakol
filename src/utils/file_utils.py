@@ -121,9 +121,22 @@ def group_file_by_speaker(csv_file, src_folder, dest_folder):
             shutil.copyfile(src_file, dest_file)
     logger.info("end")
 
+def download_from_gdrive(url, output):
+    gdown.download(url, output, quiet=False)
+
     # for record in records:
 
-
+if __name__ == '__main__':
+    import gdown
+    # Google Drive URL of the file
+    url = 'https://drive.google.com/file/d/10mr9tLip_QhV0cEfp2FsdWoAvuPoscc9/view?usp=drive_link'
+    YOUR_FILE_ID = '10mr9tLip_QhV0cEfp2FsdWoAvuPoscc9'
+    YOUR_FILE_ID = '1EsBdxcycc7LjcIHCb1LzFnJxX5lGgIc4'
+    url = f'https://drive.google.com/uc?id={YOUR_FILE_ID}'
+    # Path to save the downloaded file
+    output = 'Speakathon.ipynb'
+    # Download the file
+    gdown.download(url, output, quiet=False)
 
 # wav_folder = '/home/avrash/ai/data/wav_files_subset'
 # dest_folder = '/home/avrash/ai/data/by_speaker'
