@@ -49,23 +49,27 @@ def main():
         devices=1,
         accelerator=accelerator,
         max_epochs=5,
-        max_steps=-1,  # computed at runtime if not set
+        max_steps=100,  # computed at runtime if not set
         num_nodes=1,
         accumulate_grad_batches=1,
         enable_checkpointing=False,  # Provided by exp_manager
-        logger=None,  # Provided by exp_manager
+        logger=False,  # Provided by exp_manager
         log_every_n_steps=1,  # Interval of logging.
         val_check_interval=1.0,  # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
     ))
     print(OmegaConf.to_yaml(trainer_config))
     trainer_finetune = pl.Trainer(**trainer_config)
 
+    from nemo.utils.exp_manager import exp_manager
+    log_dir = exp_manager(trainer_finetune, finetune_config.get("exp_manager", None))
+    logger.info(f"exp_manager: logged to {log_dir}")
+
     logger.info(f'Load Nemo mode: {C.NEMO_MODEL_NAME}')
     speaker_model = nemo_asr.models.EncDecSpeakerLabelModel(cfg=finetune_config.model, trainer=trainer_finetune)
     speaker_model.maybe_init_from_pretrained_checkpoint(finetune_config)
 
     logger.info(f'trainer_finetune.fit()')
-    # trainer_finetune.fit(speaker_model)
+    trainer_finetune.fit(speaker_model)
 
     pretrained_model_path =C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
     logger.info(f'save_to {pretrained_model_path}')
@@ -95,13 +99,13 @@ def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_b
     finetune_config.trainer.strategy = strategy
     finetune_config.model.decoder.num_classes = decoder_num_classes
 
-    finetune_config.exp_manager.create_tensorboard_logger = True
+    finetune_config.exp_manager.create_tensorboard_logger = False
     finetune_config.exp_manager.create_checkpoint_callback = True
-    # finetune_config.exp_manager.create_wandb_logger = True
-    # finetune_config.exp_manager.wandb_logger_kwargs = {
-    #     "name": "NeSpeak_name",
-    #     "project": f"{C.DATASET_TYPE}_{C.NEMO_MODEL_NAME}"
-    # }
+    finetune_config.exp_manager.create_wandb_logger = True
+    finetune_config.exp_manager.wandb_logger_kwargs = {
+        "name": "NeSpeak_name",
+        "project": "NeSpeak_project"
+    }
     logger.info('end')
     return finetune_config
 
