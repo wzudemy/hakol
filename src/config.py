@@ -4,6 +4,8 @@ ROOT = Path.cwd()
     
 DATA_DIR = ROOT / 'data'
 
+SPEAKATHON_DATA_SUBSET = ROOT / 'speakathon_data_subset'
+
 # NEMO_MODEL_NAME = 'ecapa_tdnn'
 NEMO_MODEL_NAME = 'titanet-small'
 

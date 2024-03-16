@@ -12,7 +12,7 @@ from tqdm import tqdm
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 modelw = Wav2Vec2ForSequenceClassification.from_pretrained(
-    'alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech')
+    'alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech').to(device)
 processor = Wav2Vec2FeatureExtractor.from_pretrained(
     'alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech')
 
@@ -30,8 +30,7 @@ def process_list_in_chunks(lst, process_chunk, chunk_size=4):
 
 def infrennce_gender(input_values):
     with torch.no_grad():
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # input_values.to(device)
+        input_values.to(device)
         # modelw.to(device)
         result = modelw(input_values).logits
         prob = torch.nn.functional.softmax(result, dim=1)
@@ -70,7 +69,7 @@ def detect_gender(wave_folder):
 
     # result = infrennce_gender(input_values)
 
-    binary_list = process_list_in_chunks(input_values, infrennce_gender, )
+    binary_list = process_list_in_chunks(input_values, infrennce_gender)
     gender_list = [modelw.config.id2label[x] for x in binary_list]
 
     return gender_list

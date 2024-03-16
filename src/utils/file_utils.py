@@ -85,7 +85,8 @@ def create_stub_folder(original_folder, output_folder, num_duplicates):
     for i in range(num_duplicates):
         for original_file in original_files:
             original_path = os.path.join(original_folder, original_file)
-            output_file = f"{i * file_count + int(original_file.split('.')[0]):06d}.wav"
+            # output_file = f"{i * file_count + int(original_file.split('.')[0]):06d}.wav"
+            output_file = f"{original_file.split('.')[0]}_{i:03d}.wav"
             output_path = os.path.join(output_folder, output_file)
             shutil.copyfile(original_path, output_path)
 
