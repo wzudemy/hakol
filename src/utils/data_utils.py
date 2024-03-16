@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import random
@@ -10,7 +11,7 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import config as C
-from utils.audio_utils import convert_to_nemo_format_using_pydub
+from utils.audio_utils import convert_to_nemo_format_using_pydub, detect_gender
 from utils.file_utils import group_file_by_speaker, create_stub_folder, get_base_filenames
 from glob import glob
 from sklearn.model_selection import train_test_split
@@ -21,7 +22,7 @@ random.seed(seed)
 np.random.seed(seed)
 cosine_sim = torch.nn.CosineSimilarity(dim=-1)
 
-audio_files_path = 'speakathon_data_subset/challenge'
+# audio_files_path = 'speakathon_data_subset/challenge'
 hack_group_name = "group_4"
 
 logger = logging.getLogger(__name__)
@@ -99,7 +100,7 @@ def get_utterance_noise_type(df, file):
     return df[df.file == file]['noise_type'].iloc[0]
 
 
-def get_spk_to_utt(df):
+def get_spk_to_utt(df, audio_files_path):
     # Creta a dictionary of speaker to utterances
     spk_to_utts = dict()
 
@@ -123,7 +124,7 @@ def generate_stub_dataset(src_folder, dst_folder, num_duplicates):
     filenames = glob(os.path.join(dst_folder, "**", "*.wav"), recursive=True)
 
     wav_mapping = read_csv_to_dict(
-        '/home/eyalshw/github/wzudemy/hakol/speakathon_data_subset/hackathon_train_subset.csv')
+        'speakathon_data_subset/hackathon_train_subset.csv')
 
     # Create a list starting from 1000 and ending at 1999
     # speakers = list(range(start_value, start_value + num_items))
@@ -322,9 +323,9 @@ def create_dataset(df, spk_to_utts, num_groups, speakers):
     return groups_df
 
 
-def create_validation_dataset():
+def create_validation_dataset(train_csv_path, audio_files_path):
     data_folder = 'speakathon_data_subset'
-    TRAIN_CSV = os.path.join(data_folder, "hackathon_train.csv")
+    TRAIN_CSV = os.path.join(data_folder, train_csv_path)
     train_df = pd.read_csv(TRAIN_CSV)
 
     unique_speakers = train_df['speaker'].unique()
@@ -338,7 +339,7 @@ def create_validation_dataset():
 
     print(train_df.shape, train_df_new.shape, validation_df.shape)
 
-    spk_to_utts = get_spk_to_utt(validation_df)
+    spk_to_utts = get_spk_to_utt(validation_df, audio_files_path)
 
     speakers = set(spk_to_utts.keys())
 
@@ -363,7 +364,7 @@ def run_inference(utt_list, encoder):
     return torch.stack(emb_arr).squeeze(1)
 
 
-def get_embeddings(anchor_file, group_utterances, encoder):
+def get_embeddings(anchor_file, group_utterances, encoder, audio_files_path):
     """
     Generates embeddings for an anchor file and a group of utterances to compare against the anchor.
 
@@ -444,10 +445,14 @@ def submit_challenge_results(group_name, same_speaker_utt_lst):
     df.to_csv(f"{group_name}_results.csv", index=False)
 
 
-def generate_results(encoder):
-    challenge_path = '/home/eyalshw/github/wzudemy/hakol/speakathon_data_subset/groups_challenge_validation.csv'
+def generate_results(encoder, challenge_path, audio_files_path):
+    # challenge_path = 'speakathon_data_subset/groups_challenge_validation.csv'
     groups_challenge_df = pd.read_csv(challenge_path)
     num_groups = len(groups_challenge_df['group_id'].unique())
+
+    file_path = 'speakathon_data_subset/gender_dict.json'
+    with open(file_path, 'r') as json_file:
+        gender_dict = json.load(json_file)
 
     same_speaker_utt_lst = []
 
@@ -458,12 +463,18 @@ def generate_results(encoder):
 
         # Retrieve the anchor file for the current group
         anchor_file = group_df['anchor_file'].iloc[0]
+        anchor_gender = gender_dict[anchor_file]
 
         # Collect all utterance files associated with the current group
         group_utterances = group_df['group_file'].values.tolist()
 
+        # TODO: consider gender
+        group_genders = [gender_dict[group_utterance] for group_utterance in group_utterances]
+        same_gender_list = [item for item, gender in zip(group_utterances, group_genders) if gender==anchor_gender]
+        group_utterances = same_gender_list
+
         # Obtain embeddings for the anchor and group utterances
-        anchor_emb, group_emb, group_utterances = get_embeddings(anchor_file, group_utterances, encoder)
+        anchor_emb, group_emb, group_utterances = get_embeddings(anchor_file, group_utterances, encoder, audio_files_path)
 
         # Determine the group utterance most similar to the anchor in embedding space
         same_speaker_utt = get_closest_speaker(anchor_emb, group_emb, group_utterances)
@@ -475,13 +486,9 @@ def generate_results(encoder):
     submit_challenge_results(group_name=hack_group_name, same_speaker_utt_lst=same_speaker_utt_lst)
 
 
-def generate_reuslts():
-    pass
-
-
 def calculate_score_on_validation():
-    GROUP_CHALLENGE_VALIDATION = '/home/eyalshw/github/wzudemy/hakol/speakathon_data_subset/groups_challenge_validation.csv'
-    RESULTS_FILE = '/home/eyalshw/github/wzudemy/hakol/group_4_results.csv'
+    GROUP_CHALLENGE_VALIDATION = 'speakathon_data_subset/groups_challenge_validation.csv'
+    RESULTS_FILE = 'group_4_results.csv'
     groups_df = pd.read_csv(GROUP_CHALLENGE_VALIDATION)
     NUM_GROUPS = len(groups_df['group_id'].unique())
     res_df = pd.read_csv(RESULTS_FILE)
@@ -503,15 +510,17 @@ if __name__ == "__main__":
 
     is_generate_stub_dataset = False
     is_create_validation_dataset = False
-    is_generate_results = False
+    is_generate_results = True
     is_calculate_score_on_validation = True
 
     # TODO:
     # replace encoder with our own
     import nemo.collections.asr as nemo_asr
 
-    speaker_model_path = '/home/eyalshw/github/wzudemy/hakol/data/titanet-small_ft.nemo'
+    speaker_model_path = 'data/titanet-small_ft.nemo'
     encoder = nemo_asr.models.EncDecSpeakerLabelModel.restore_from(speaker_model_path)
+    audio_files_path = 'speakathon_data_subset/challenge'
+    challenge_path = 'speakathon_data_subset/groups_challenge_validation.csv'
 
     if is_generate_stub_dataset:
         src_folder: str = 'speakathon_data_subset/wav_files_subset'
@@ -523,10 +532,10 @@ if __name__ == "__main__":
         generate_stub_dataset(src_folder, dest_folder, 600)
 
     if is_create_validation_dataset:
-        create_validation_dataset()
+        create_validation_dataset('hackathon_train.csv', audio_files_path)
 
     if is_generate_results:
-        generate_results(encoder)
+        generate_results(encoder, 'speakathon_data_subset/groups_challenge_validation.csv', audio_files_path)
 
     if is_calculate_score_on_validation:
         calculate_score_on_validation()

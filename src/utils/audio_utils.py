@@ -1,5 +1,8 @@
 import itertools
+import json
 import os
+
+import pandas as pd
 import soundfile as sf
 import librosa
 import torch
@@ -8,6 +11,9 @@ from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassifica
 
 from utils.file_utils import check_extension, get_files_in_folder
 from tqdm import tqdm
+import numpy as np
+from scipy.io.wavfile import read
+import config as C
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -28,24 +34,22 @@ def process_list_in_chunks(lst, process_chunk, chunk_size=4):
 
 
 
-def infrennce_gender(input_values):
+def infrennce_gender(source_array_cunnk):
     with torch.no_grad():
-        input_values.to(device)
+        # input_values.to(device)
         # modelw.to(device)
+        input_values = processor(source_array_cunnk, sampling_rate=16000, padding='longest', return_tensors='pt').input_values
+        input_values = input_values.to(device)
+        modelw.to(device)
         result = modelw(input_values).logits
         prob = torch.nn.functional.softmax(result, dim=1)
 
     torch.cuda.empty_cache()
     return torch.argmax(prob, dim=1).detach().cpu().numpy()
 
-def detect_gender(wave_folder):
-    import torch
-    import numpy as np
-    from scipy.io.wavfile import read
-
-    wave_files = get_files_in_folder(wave_folder)
-
-    wave_files = wave_files[:8]
+def detect_gender(wave_files):
+    # TODO: remove this line
+    # wave_files = wave_files[:8]
 
     sound_array = []
     for wave_file in wave_files:
@@ -53,23 +57,7 @@ def detect_gender(wave_folder):
         wave_file = np.array(output[1], dtype=float)
         sound_array.append(wave_file)
 
-    # Determine the maximum length of the sublists
-    max_length = max(len(sublist) for sublist in sound_array)
-
-    # Create an empty array to hold the padded sublists
-    padded_array = np.zeros((len(sound_array), max_length))
-
-    # Pad each sublist to match the length of the longest sublist
-    for i, sublist in enumerate(sound_array):
-        padded_array[i, :len(sublist)] = sublist
-
-    input_values = processor(sound_array, sampling_rate=16000, padding='longest', return_tensors='pt').input_values
-
-    # result = modelw(input_values).logits
-
-    # result = infrennce_gender(input_values)
-
-    binary_list = process_list_in_chunks(input_values, infrennce_gender)
+    binary_list = process_list_in_chunks(sound_array, infrennce_gender, chunk_size=C.GENDER_CHUNK_SIZE)
     gender_list = [modelw.config.id2label[x] for x in binary_list]
 
     return gender_list
@@ -109,7 +97,18 @@ def convert_to_nemo_format_using_pydub(
 
 
 if __name__ == "__main__":
-    test_folder = '/home/eyalshw/github/wzudemy/hakol/data/subset/wav_files_subset'
+    audio_files_path = 'speakathon_data_subset/challenge'
+    validation_csv = 'speakathon_data_subset/groups_challenge_validation.csv'
 
-    classification = detect_gender(test_folder)
-    print(classification)
+    groups_challenge_df = pd.read_csv(validation_csv)
+    # TODO: remove
+    # groups_challenge_df = groups_challenge_df.head(10)
+    speaker_waves = (set(groups_challenge_df['anchor_file']).union(set(groups_challenge_df['group_file'])))
+    speaker_waves_files = [os.path.join(audio_files_path, speaker_wave) for speaker_wave in speaker_waves]
+
+    speakers_gender = detect_gender(speaker_waves_files)
+    gender_dict = dict(zip(speaker_waves, speakers_gender))
+    file_path = 'speakathon_data_subset/gender_dict.json'
+    with open(file_path, 'w') as json_file:
+        json.dump(gender_dict, json_file, indent=2)
+
