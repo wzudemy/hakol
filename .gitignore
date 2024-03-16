@@ -170,3 +170,7 @@ data/subset/conf/*
 /data/stub/*
 /segments/*
 /logs/*
+/data/subset/challenge/groups_challenge_validation.csv
+/speakathon_data_subset/challenge/*.wav
+/speakathon_data_subset/wav_files_subset/*.wav
+*results.csv
