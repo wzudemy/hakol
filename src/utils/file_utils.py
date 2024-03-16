@@ -43,7 +43,7 @@ def init_logging(logging_level=logging.INFO):
     # Create a console handler with colors
     console = colorlog.StreamHandler()
     console.setFormatter(colorlog.ColoredFormatter(
-        '%(log_color)s%(levelname)s:%(message)s',
+        f'%(log_color)s{logging_format}',
         log_colors={
             'DEBUG': 'cyan',
             'INFO': 'green',
