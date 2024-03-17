@@ -121,6 +121,22 @@ def group_file_by_speaker(csv_file, src_folder, dest_folder):
             shutil.copyfile(src_file, dest_file)
     logger.info("end")
 
+def group_file_by_column(csv_file, src_folder, dest_folder, column='speaker'):
+    logger.info("start")
+    speakers = pd.read_csv(csv_file, chunksize=1000)
+    for chunk in tqdm(speakers):
+        records = chunk.to_dict('records')
+        for record in records:
+            speaker_folder = f'{dest_folder}/{record.get(column)}'
+            if not os.path.exists(speaker_folder):
+                os.makedirs(speaker_folder)
+            file_name = record.get("file")
+            src_file = f'{src_folder}/{file_name}'
+            dest_file = f'{speaker_folder}/{file_name}'
+
+            shutil.copyfile(src_file, dest_file)
+    logger.info("end")
+
 def download_from_gdrive(url, output):
     gdown.download(url, output, quiet=False)
 
