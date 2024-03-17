@@ -34,12 +34,12 @@ def main():
     # based on
     # !python {NEMO_ROOT}/scripts/speaker_tasks/filelist_to_manifest.py --filelist {data_dir}/an4/wav/an4test_clstk/test_all.txt --id -2 --out {data_dir}/an4/wav/an4test_clstk/test.json
     manifest_filename, speakers = filelist_to_manifest(dest_folder, 'manifest', -2, 'out',
-                                             min_count=C.SPEAKATHON_MIN_SPEAKER_COUNT, max_count=C.SPEAKATHON_MAX_SPEAKER_COUNT)
+                                             min_count=C.SPEAKATHON_MIN_SPEAKER_COUNT, max_count=C.SPEAKATHON_MAX_SPEAKER_COUNT, split=True, create_segments=True)
 
     logger.info('create_nemo_config')
     decoder_num_classes = len(set(speakers))
     # download model config
-    finetune_config = create_nemo_config(manifest_filename, C.TRAIN_BATCH_SIZE, manifest_filename, C.VALID_BATCH_SIZE,
+    finetune_config = create_nemo_config('train.json', C.TRAIN_BATCH_SIZE, 'dev.json', C.VALID_BATCH_SIZE,
                                          decoder_num_classes)
 
     # TODO: add wandb
@@ -87,6 +87,7 @@ def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_b
                        decoder_num_classes=10, augmentor=None, strategy='auto'):
     logger.info('start')
     config_dir = C.DATA_DIR / C.DATASET_TYPE / 'conf'
+    os.makedirs(config_dir, exist_ok=True)
     model_config = os.path.join(config_dir, f"{C.NEMO_MODEL_NAME}.yaml")
     url = f"https://raw.githubusercontent.com/NVIDIA/NeMo/main/examples/speaker_tasks/recognition/conf/{C.NEMO_MODEL_NAME}.yaml"
     wget.download(url, out=model_config)

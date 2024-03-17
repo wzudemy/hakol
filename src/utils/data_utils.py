@@ -324,9 +324,8 @@ def create_dataset(df, spk_to_utts, num_groups, speakers):
 
 
 def create_validation_dataset(train_csv_path, audio_files_path):
-    data_folder = 'speakathon_data_subset'
-    TRAIN_CSV = os.path.join(data_folder, train_csv_path)
-    train_df = pd.read_csv(TRAIN_CSV)
+    validation_path = C.DATA_DIR / 'validation.csv'
+    train_df = pd.read_csv(train_csv_path)
 
     unique_speakers = train_df['speaker'].unique()
 
@@ -347,7 +346,7 @@ def create_validation_dataset(train_csv_path, audio_files_path):
 
     groups_df = create_dataset(validation_df, spk_to_utts, NUM_GROUPS_TO_CREATE, speakers)
 
-    groups_df.to_csv('speakathon_data_subset/groups_challenge_validation.csv', index=False)
+    groups_df.to_csv(validation_path, index=False)
 
     return groups_df
 
@@ -450,9 +449,10 @@ def generate_results(encoder, challenge_path, audio_files_path):
     groups_challenge_df = pd.read_csv(challenge_path)
     num_groups = len(groups_challenge_df['group_id'].unique())
 
-    file_path = 'speakathon_data_subset/gender_dict.json'
-    with open(file_path, 'r') as json_file:
-        gender_dict = json.load(json_file)
+    if C.SPEAKATHON_FILTER_PREDICTED_SAME_GENDER:
+        file_path = '/workdir/data/gender_dict.json'
+        with open(file_path, 'r') as json_file:
+            gender_dict = json.load(json_file)
 
     same_speaker_utt_lst = []
 
@@ -464,15 +464,14 @@ def generate_results(encoder, challenge_path, audio_files_path):
 
         # Retrieve the anchor file for the current group
         anchor_file = group_df['anchor_file'].iloc[0]
-        anchor_gender = gender_dict[anchor_file]
+        
 
         # Collect all utterance files associated with the current group
         group_utterances = group_df['group_file'].values.tolist()
 
         # TODO: consider gender
-
-
         if C.SPEAKATHON_FILTER_PREDICTED_SAME_GENDER:
+            anchor_gender = gender_dict[anchor_file]
             group_genders = [gender_dict[group_utterance] for group_utterance in group_utterances]
             same_gender_list = [item for item, gender in zip(group_utterances, group_genders) if gender==anchor_gender]
             if len(same_gender_list) > 0:
@@ -492,7 +491,7 @@ def generate_results(encoder, challenge_path, audio_files_path):
 
 
 def calculate_score_on_validation():
-    GROUP_CHALLENGE_VALIDATION = 'speakathon_data_subset/groups_challenge_validation.csv'
+    GROUP_CHALLENGE_VALIDATION = C.DATA_DIR / 'validation.csv'
     RESULTS_FILE = 'group_4_results.csv'
     groups_df = pd.read_csv(GROUP_CHALLENGE_VALIDATION)
     NUM_GROUPS = len(groups_df['group_id'].unique())
@@ -522,10 +521,13 @@ if __name__ == "__main__":
     # replace encoder with our own
     import nemo.collections.asr as nemo_asr
 
-    speaker_model_path = C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
+    # speaker_model_path = C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
+    speaker_model_path = C.DATA_DIR / 'titanet-large_not_segment_ft.nemo'
     encoder = nemo_asr.models.EncDecSpeakerLabelModel.restore_from(speaker_model_path)
-    audio_files_path = 'speakathon_data_subset/challenge'
-    challenge_path = 'speakathon_data_subset/groups_challenge_validation.csv'
+    audio_files_path =  C.DATA_DIR / 'wav_files'
+    challenge_path = C.DATA_DIR / 'groups_challenge_validation.csv'
+    hackathon_train_path = C.DATA_DIR / 'hackathon_train.csv'
+    validation_path = C.DATA_DIR / 'validation.csv'
 
     if is_generate_stub_dataset:
         logger.info("is_generate_stub_dataset")
@@ -539,11 +541,11 @@ if __name__ == "__main__":
 
     if is_create_validation_dataset:
         logger.info("is_create_validation_dataset")
-        create_validation_dataset('hackathon_train.csv', audio_files_path)
+        create_validation_dataset(hackathon_train_path, audio_files_path)
 
     if is_generate_results:
         logger.info("is_generate_results")
-        generate_results(encoder, 'speakathon_data_subset/groups_challenge_validation.csv', audio_files_path)
+        generate_results(encoder, validation_path, audio_files_path)
 
     if is_calculate_score_on_validation:
         logger.info("calculate_score_on_validation")

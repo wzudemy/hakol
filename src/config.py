@@ -2,23 +2,25 @@ from pathlib import Path
 
 ROOT = Path.cwd()
     
-DATA_DIR = ROOT / 'data'
+DATA_DIR = Path('/workdir') / 'data'
 
-SPEAKATHON_DATA_SUBSET = DATA_DIR / 'hackathon_data'
+SPEAKATHON_DATA_SUBSET = DATA_DIR
 SPEAKATHON_MIN_SPEAKER_COUNT = 5
 SPEAKATHON_MAX_SPEAKER_COUNT = 10
 SPEAKATHON_FILTER_PREDICTED_SAME_GENDER = False
     
 # NEMO_MODEL_NAME = 'ecapa_tdnn'
-NEMO_MODEL_NAME = 'titanet-small'
+NEMO_MODEL_NAME = 'titanet-large'
 
 # TODO: change this to challenge
 DATASET_TYPE = 'subset'  # challenge, cv-subset, cv-full
 
-TRAIN_BATCH_SIZE = 4
-VALID_BATCH_SIZE = 4
+TRAIN_BATCH_SIZE = 20
+VALID_BATCH_SIZE = 20
 
-MAX_SPEAKERS_COUNT_FILTER = 5
+# TODO: increase
+
+MAX_SPEAKERS_COUNT_FILTER = 20
 
 LOGGING_LEVEL = "DEBUG"
 
