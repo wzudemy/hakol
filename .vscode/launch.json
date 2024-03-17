@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",fintune_nemo
-            "program": "src/fintune_nemo.py",
+            "program": "src/finetune_nemo.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {"PYTHONPATH": "${workspaceFolder}"}

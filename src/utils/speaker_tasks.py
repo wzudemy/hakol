@@ -185,7 +185,7 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
     if os.path.exists(out):
         os.remove(out)
         
-    filelist_abspath_list = glob.glob(os.path.join(wav_dir, "**", "*.wav"), recursive=True)
+    filelist_abspath_list = glob.glob(os.path.join(wav_dir, "**", "*_nemo.wav"), recursive=True)
     filelist= os.path.join(wav_dir, 'filelist.txt')
     write_list_to_file(filelist_abspath_list, filelist)
     

@@ -175,3 +175,7 @@ data/subset/conf/*
 /speakathon_data_subset/wav_files_subset/*.wav
 *results.csv
 /speakathon_data_subset/challenge/nemo/*
+/notebooks/data/an4/*
+/nemo_experiments/wandb/*
+/notebooks/nemo_experiments/*
+/notebooks/scripts/*

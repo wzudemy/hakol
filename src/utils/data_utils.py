@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 def preprocess_data():
     filelist_csv = C.SPEAKATHON_DATA_SUBSET / 'hackathon_train.csv'
-    filtered_filelist_csv = C.SPEAKATHON_DATA_SUBSET / 'challenge' / 'hackathon_train_filtered.csv'
-    src_folder = C.SPEAKATHON_DATA_SUBSET / 'challenge'
-    dest_folder = C.SPEAKATHON_DATA_SUBSET / 'challenge' / 'nemo'
+    filtered_filelist_csv = C.SPEAKATHON_DATA_SUBSET / 'hackathon_train_filtered.csv'
+    src_folder = C.SPEAKATHON_DATA_SUBSET / 'wav_files'
+    dest_folder = C.SPEAKATHON_DATA_SUBSET / 'nemo'
 
     if C.STUB:
         generate_stub_dataset(src_folder, 100)

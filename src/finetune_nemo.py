@@ -49,7 +49,7 @@ def main():
         devices=1,
         accelerator=accelerator,
         max_epochs=5,
-        max_steps=100,  # computed at runtime if not set
+        max_steps=-1,  # computed at runtime if not set
         num_nodes=1,
         accumulate_grad_batches=1,
         enable_checkpointing=False,  # Provided by exp_manager
