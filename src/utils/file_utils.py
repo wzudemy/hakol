@@ -137,6 +137,23 @@ def group_file_by_column(csv_file, src_folder, dest_folder, column='speaker'):
             shutil.copyfile(src_file, dest_file)
     logger.info("end")
 
+def copy_files(csv_file, src_folder, dest_folder, file_column='file'):
+    logger.info("start")
+    files_df = pd.read_csv(csv_file, chunksize=1000)
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+
+    for chunk in tqdm(files_df):
+        file_names = chunk[file_column].to_list()
+
+        for file_name in file_names:
+
+            src_file = f'{src_folder}/{file_name}'
+            dest_file =  f'{dest_folder}/{file_name}'
+            shutil.copyfile(src_file, dest_file)
+    logger.info("end")
+
+
 def download_from_gdrive(url, output):
     gdown.download(url, output, quiet=False)
 
