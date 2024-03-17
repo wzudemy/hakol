@@ -1,0 +1,29 @@
+
+#py38
+
+
+# pre install
+# sudo apt-get update && apt-get install -y libsndfile1 ffmpeg
+# cuda 12.1/12.2
+# pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+
+
+# pandas
+# librosa
+# soundfile
+# tqdm
+# scikit-learn
+# sox
+Cython
+nemo_toolkit[asr]
+wget
+plotly
+colorlog
+
+
+
+# torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+# torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cu121
+# torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+
+# apt-get install sox
