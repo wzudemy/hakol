@@ -47,6 +47,8 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm.contrib.concurrent import process_map
 # from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 
+import config as C
+
 from utils.file_utils import write_list_to_file
 
 logger = logging.getLogger(__name__)
@@ -212,7 +214,7 @@ def filelist_to_manifest(wav_dir, manifest, id, out, split=False, create_segment
     path = os.path.dirname(out)
     if split:
         speakers = [x['label'] for x in lines]
-        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=42)
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=C.HP_TEST_SIZE, random_state=42)
         for train_idx, test_idx in sss.split(speakers, speakers):
             print("number of train samples after split: ", len(train_idx))
 

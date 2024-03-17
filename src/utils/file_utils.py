@@ -60,6 +60,18 @@ def init_logging(logging_level=logging.INFO):
     logging.error("This is an error message")
     logging.critical("This is a critical message")
 
+def get_parent_directory(path):
+    """
+    Get the parent directory of a given path.
+    
+    Args:
+    - path (str): Path for which to get the parent directory.
+    
+    Returns:
+    - str: Parent directory of the given path.
+    """
+    return os.path.abspath(os.path.join(path, os.pardir))
+
 def get_base_filenames(directory_path):
     # Get list of all files in the directory
     files = os.listdir(directory_path)
