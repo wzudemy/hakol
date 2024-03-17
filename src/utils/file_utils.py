@@ -1,4 +1,5 @@
 import glob
+from collections import Counter
 
 import pandas as pd
 import shutil
@@ -121,13 +122,19 @@ def group_file_by_speaker(csv_file, src_folder, dest_folder):
             shutil.copyfile(src_file, dest_file)
     logger.info("end")
 
-def group_file_by_column(csv_file, src_folder, dest_folder, column='speaker'):
+def group_file_by_column(csv_file, src_folder, dest_folder, column='speaker', max_per_val= 100):
+    val_counter = Counter()
     logger.info("start")
     speakers = pd.read_csv(csv_file, chunksize=1000)
     for chunk in tqdm(speakers):
         records = chunk.to_dict('records')
         for record in records:
-            speaker_folder = f'{dest_folder}/{record.get(column)}'
+            column_val = record.get(column)
+            val_counter.update([column_val])
+            column_val_count = val_counter.get(column_val)
+            if column_val_count > max_per_val:
+                continue
+            speaker_folder = f'{dest_folder}/{column_val}'
             if not os.path.exists(speaker_folder):
                 os.makedirs(speaker_folder)
             file_name = record.get("file")
