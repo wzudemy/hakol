@@ -514,7 +514,7 @@ def calculate_score_on_validation():
     challenge_score = correct / NUM_GROUPS
 
     print(f"validation challenge score: {challenge_score:.2%}%")
-    return challenge_score
+    return challenge_score * 100
 
 def convert_wave_to_nemo():
     src_folder = C.SPEAKATHON_DATA_SUBSET / 'wav_files'

@@ -19,8 +19,8 @@ HP_TEST_SIZE = 0.1
 # TODO: change this to challenge
 DATASET_TYPE = 'subset'  # challenge, cv-subset, cv-full
 
-TRAIN_BATCH_SIZE = 36
-VALID_BATCH_SIZE = 36
+TRAIN_BATCH_SIZE = 32
+VALID_BATCH_SIZE = 32
 
 # TODO: increase
 
