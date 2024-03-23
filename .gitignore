@@ -179,3 +179,10 @@ data/subset/conf/*
 /nemo_experiments/wandb/*
 /notebooks/nemo_experiments/*
 /notebooks/scripts/*
+/data/*
+/src/utils/hackathon_data.zip
+*.csv
+/nemo_experiments/*
+/notebooks/data/an4_sphere.tar.gz
+/notebooks/conf/*
+/speakathon_data_subset/gender_dict.json
