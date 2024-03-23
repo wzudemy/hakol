@@ -8,8 +8,8 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",fintune_nemo
-            "program": "src/finetune_nemo.py",
+            "program": "${file}",
+            // "program": "src/finetune_nemo.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {"PYTHONPATH": "${workspaceFolder}"}

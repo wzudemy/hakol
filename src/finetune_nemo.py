@@ -13,33 +13,57 @@ import torch
 import pytorch_lightning as pl
 import config as C
 from src.utils.nemo_inference import verify_speakers
-from utils.data_utils import preprocess_data, generate_results
+from utils.data_utils import calculate_score_on_validation, preprocess_data, generate_results, submit_challenge_results
 from utils.speaker_tasks import filelist_to_manifest
 import wget
 import nemo.collections.asr as nemo_asr
+from nemo.utils.exp_manager import exp_manager
 
 init_logging(C.LOGGING_LEVEL)
 
 logger = logging.getLogger(__name__)
 
+# Define sweep config
+sweep_configuration = {
+    "method": "bayes",
+    "name": "sweep",
+    "metric": {"goal": "maximize", "name": "sr_acc"},
+    "parameters": {
+        "same_gender": {"values": [False, True]},
+        "epochs": {"values": [5,10,20, 50]},
+        "segement": {"values": [False]},
+        "test_size": {"values": [0.2]},
+        "model_name": {"values": ["ecapa_tdnn", "titanet-large"]},
+        
+    },
+}
+
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="nemo-sweep")
 
 def main():
     logger.info('start')
 
+    run = wandb.init()
+    
+    dest_folder = C.SPEAKATHON_DATA_SUBSET / 'nemo'
+    validation_path = C.DATA_DIR / 'validation.csv'
+
     logger.info('preprocess_data')
-    dest_folder = preprocess_data()
+    # dest_folder = preprocess_data()
 
     logger.info('filelist_to_manifest')
     # Convert the dest folder to manifest
     # based on
     # !python {NEMO_ROOT}/scripts/speaker_tasks/filelist_to_manifest.py --filelist {data_dir}/an4/wav/an4test_clstk/test_all.txt --id -2 --out {data_dir}/an4/wav/an4test_clstk/test.json
-    manifest_filename, speakers = filelist_to_manifest(dest_folder, 'manifest', -2, 'out',
-                                             min_count=C.SPEAKATHON_MIN_SPEAKER_COUNT, max_count=C.SPEAKATHON_MAX_SPEAKER_COUNT)
+    # manifest_filename, speakers = filelist_to_manifest(dest_folder, 'manifest', -2, 'out',
+    #                                          min_count=C.SPEAKATHON_MIN_SPEAKER_COUNT, max_count=C.SPEAKATHON_MAX_SPEAKER_COUNT, split=True,
+    #                                          create_segments=C.HP_SEGMENTS)
 
-    logger.info('create_nemo_config')
-    decoder_num_classes = len(set(speakers))
+    # logger.info('create_nemo_config')
+    # decoder_num_classes = len(set(speakers))
+    decoder_num_classes = 1016
     # download model config
-    finetune_config = create_nemo_config(manifest_filename, C.TRAIN_BATCH_SIZE, manifest_filename, C.VALID_BATCH_SIZE,
+    finetune_config = create_nemo_config('train.json', C.TRAIN_BATCH_SIZE, 'dev.json', C.VALID_BATCH_SIZE,
                                          decoder_num_classes)
 
     # TODO: add wandb
@@ -48,7 +72,7 @@ def main():
     trainer_config = OmegaConf.create(dict(
         devices=1,
         accelerator=accelerator,
-        max_epochs=5,
+        max_epochs=C.HP_MAX_EPOCS,
         max_steps=-1,  # computed at runtime if not set
         num_nodes=1,
         accumulate_grad_batches=1,
@@ -60,9 +84,9 @@ def main():
     print(OmegaConf.to_yaml(trainer_config))
     trainer_finetune = pl.Trainer(**trainer_config)
 
-    from nemo.utils.exp_manager import exp_manager
-    log_dir = exp_manager(trainer_finetune, finetune_config.get("exp_manager", None))
-    logger.info(f"exp_manager: logged to {log_dir}")
+    
+    # log_dir = exp_manager(trainer_finetune, finetune_config.get("exp_manager", None))
+    # logger.info(f"exp_manager: logged to {log_dir}")
 
     logger.info(f'Load Nemo mode: {C.NEMO_MODEL_NAME}')
     speaker_model = nemo_asr.models.EncDecSpeakerLabelModel(cfg=finetune_config.model, trainer=trainer_finetune)
@@ -71,14 +95,38 @@ def main():
     logger.info(f'trainer_finetune.fit()')
     trainer_finetune.fit(speaker_model)
 
-    pretrained_model_path =C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
+    model_name = f"{C.NEMO_MODEL_NAME}_{C.HP_FILTER_PREDICTED_SAME_GENDER}_{C.HP_MAX_EPOCS}_{C.HP_TEST_SIZE}_{C.HP_SEGMENTS}.nemo"
+    pretrained_model_path =C.DATA_DIR / model_name
     logger.info(f'save_to {pretrained_model_path}')
     speaker_model.save_to(pretrained_model_path)
 
     # generate results
     encoder = nemo_asr.models.EncDecSpeakerLabelModel.restore_from(pretrained_model_path)
-    # valid_audio_path = TBD
-    # generate_results(encoder, 'speakathon_data_subset/groups_validation.csv', valid_audio_path)
+    audio_files_path =  C.DATA_DIR / 'wav_files_cln'
+    validation_utt_lst = generate_results(encoder, validation_path, audio_files_path)
+    valid_df = pd.read_csv(validation_path)
+    valid_df = valid_df.groupby('group_label').head(1)
+    valid_df['pred_label'] = validation_utt_lst
+    valid_correct = (valid_df['pred_label'] == valid_df['group_label']).sum()
+    valid_score = valid_correct / len(valid_df)
+    print(valid_score)
+    
+
+    # on shiry
+    challenge_path = '/workdir/data/challenge/groups_challenge.csv'
+    same_speaker_utt_lst = generate_results(encoder, challenge_path, audio_files_path)
+    group_name = f"{model_name}_{valid_score}_result_4.csv"
+    submit_challenge_results(group_name=group_name, same_speaker_utt_lst=same_speaker_utt_lst)
+    
+
+    # challenge_score = calculate_score_on_validation()
+    
+   
+    wandb.log(
+            {
+                "sr_acc": valid_score,
+            }
+        )
 
     logger.info('end')
 
@@ -87,6 +135,7 @@ def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_b
                        decoder_num_classes=10, augmentor=None, strategy='auto'):
     logger.info('start')
     config_dir = C.DATA_DIR / C.DATASET_TYPE / 'conf'
+    os.makedirs(config_dir, exist_ok=True)
     model_config = os.path.join(config_dir, f"{C.NEMO_MODEL_NAME}.yaml")
     url = f"https://raw.githubusercontent.com/NVIDIA/NeMo/main/examples/speaker_tasks/recognition/conf/{C.NEMO_MODEL_NAME}.yaml"
     wget.download(url, out=model_config)
@@ -110,5 +159,15 @@ def create_nemo_config(train_manifest, train_natch_size, valid_manifest, valid_b
     return finetune_config
 
 
+wandb.agent(sweep_id, function=main, count=50)
+
 if __name__ == "__main__":
+  
+        # run = wandb.init()
+    C.NEMO_MODEL_NAME = wandb.config.model_name
+    C.HP_FILTER_PREDICTED_SAME_GENDER = wandb.config.same_gender
+    C.HP_MAX_EPOCS = wandb.config.epochs
+    C.HP_SEGMENTS = wandb.config.segement
+    C.HP_TEST_SIZE = wandb.config.test_size
+
     main()

@@ -1,6 +1,8 @@
+from glob import glob
 import itertools
 import json
 import os
+from pathlib import Path
 
 import pandas as pd
 import soundfile as sf
@@ -9,11 +11,11 @@ import torch
 from pydub import AudioSegment
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
 
-from utils.file_utils import check_extension, get_files_in_folder
+from src.utils.file_utils import check_extension, get_files_in_folder, get_parent_directory
 from tqdm import tqdm
 import numpy as np
 from scipy.io.wavfile import read
-import config as C
+import src.config as C
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,6 +74,8 @@ def convert_to_nemo_format_using_pydub(
         outfile: str = None,
         target_dBFS: float = -20.0,
 ):
+    if "nemo" in input_file:
+        return
     _, file_extension = os.path.splitext(input_file)
     if file_extension == '.mp3':
         input_audio = AudioSegment.from_mp3(input_file)
@@ -97,8 +101,8 @@ def convert_to_nemo_format_using_pydub(
 
 
 if __name__ == "__main__":
-    audio_files_path = 'speakathon_data_subset/challenge'
-    validation_csv = 'speakathon_data_subset/groups_challenge_validation.csv'
+    audio_files_path =  C.DATA_DIR / 'wav_files'
+    validation_csv = C.DATA_DIR / 'challenge' / 'groups_challenge.csv'
 
     groups_challenge_df = pd.read_csv(validation_csv)
     # TODO: remove
@@ -106,9 +110,16 @@ if __name__ == "__main__":
     speaker_waves = (set(groups_challenge_df['anchor_file']).union(set(groups_challenge_df['group_file'])))
     speaker_waves_files = [os.path.join(audio_files_path, speaker_wave) for speaker_wave in speaker_waves]
 
-    speakers_gender = detect_gender(speaker_waves_files)
-    gender_dict = dict(zip(speaker_waves, speakers_gender))
-    file_path = 'speakathon_data_subset/gender_dict.json'
-    with open(file_path, 'w') as json_file:
-        json.dump(gender_dict, json_file, indent=2)
+    files_list = glob(os.path.join(audio_files_path, "**", "*.wav"), recursive=True)
+
+    for file in tqdm(files_list):
+        convert_to_nemo_format_using_pydub(file, outfile=file)
+
+    
+
+    # speakers_gender = detect_gender(speaker_waves_files)
+    # gender_dict = dict(zip(speaker_waves, speakers_gender))
+    # file_path = 'speakathon_data_subset/gender_dict.json'
+    # with open(file_path, 'w') as json_file:
+    #     json.dump(gender_dict, json_file, indent=2)
 

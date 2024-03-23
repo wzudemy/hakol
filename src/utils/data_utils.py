@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import random
 import shutil
@@ -10,9 +11,9 @@ from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
-import config as C
-from utils.audio_utils import convert_to_nemo_format_using_pydub, detect_gender
-from utils.file_utils import group_file_by_speaker, create_stub_folder, get_base_filenames, init_logging
+import src.config as C
+from src.utils.audio_utils import convert_to_nemo_format_using_pydub, detect_gender
+from src.utils.file_utils import group_file_by_speaker, create_stub_folder, get_base_filenames, init_logging
 from glob import glob
 from sklearn.model_selection import train_test_split
 
@@ -324,9 +325,8 @@ def create_dataset(df, spk_to_utts, num_groups, speakers):
 
 
 def create_validation_dataset(train_csv_path, audio_files_path):
-    data_folder = 'speakathon_data_subset'
-    TRAIN_CSV = os.path.join(data_folder, train_csv_path)
-    train_df = pd.read_csv(TRAIN_CSV)
+    validation_path = C.DATA_DIR / 'validation.csv'
+    train_df = pd.read_csv(train_csv_path)
 
     unique_speakers = train_df['speaker'].unique()
 
@@ -347,7 +347,7 @@ def create_validation_dataset(train_csv_path, audio_files_path):
 
     groups_df = create_dataset(validation_df, spk_to_utts, NUM_GROUPS_TO_CREATE, speakers)
 
-    groups_df.to_csv('speakathon_data_subset/groups_challenge_validation.csv', index=False)
+    groups_df.to_csv(validation_path, index=False)
 
     return groups_df
 
@@ -444,15 +444,20 @@ def submit_challenge_results(group_name, same_speaker_utt_lst):
     # Write to CSV
     df.to_csv(f"{group_name}_results.csv", index=False)
 
+def sign(float_number):
+    return float_number > 0
+
 
 def generate_results(encoder, challenge_path, audio_files_path):
     # challenge_path = 'speakathon_data_subset/groups_challenge_validation.csv'
     groups_challenge_df = pd.read_csv(challenge_path)
     num_groups = len(groups_challenge_df['group_id'].unique())
 
-    file_path = 'speakathon_data_subset/gender_dict.json'
-    with open(file_path, 'r') as json_file:
-        gender_dict = json.load(json_file)
+    if C.HP_FILTER_PREDICTED_SAME_GENDER:
+        file_path = '/workdir/data/gender_prob.json'
+        with open(file_path, 'r') as json_file:
+            gender_prob = json.load(json_file)
+
 
     same_speaker_utt_lst = []
 
@@ -464,17 +469,15 @@ def generate_results(encoder, challenge_path, audio_files_path):
 
         # Retrieve the anchor file for the current group
         anchor_file = group_df['anchor_file'].iloc[0]
-        anchor_gender = gender_dict[anchor_file]
-
+        
         # Collect all utterance files associated with the current group
         group_utterances = group_df['group_file'].values.tolist()
 
         # TODO: consider gender
-
-
-        if C.SPEAKATHON_FILTER_PREDICTED_SAME_GENDER:
-            group_genders = [gender_dict[group_utterance] for group_utterance in group_utterances]
-            same_gender_list = [item for item, gender in zip(group_utterances, group_genders) if gender==anchor_gender]
+        if C.HP_FILTER_PREDICTED_SAME_GENDER:
+            anchor_gender = gender_prob.get(anchor_file, 0)
+            group_genders = [gender_prob.get(group_utterance, 0) for group_utterance in group_utterances]
+            same_gender_list = [item for item, gender in zip(group_utterances, group_genders) if sign(anchor_gender)==sign(gender)]
             if len(same_gender_list) > 0:
                 group_utterances = same_gender_list
 
@@ -486,13 +489,14 @@ def generate_results(encoder, challenge_path, audio_files_path):
 
         # Append the identified utterance to the list of same speaker utterances
         same_speaker_utt_lst.append(same_speaker_utt)
+    return same_speaker_utt_lst
 
     # After processing all groups, submit the results
-    submit_challenge_results(group_name=hack_group_name, same_speaker_utt_lst=same_speaker_utt_lst)
+    
 
 
 def calculate_score_on_validation():
-    GROUP_CHALLENGE_VALIDATION = 'speakathon_data_subset/groups_challenge_validation.csv'
+    GROUP_CHALLENGE_VALIDATION = C.DATA_DIR / 'validation.csv'
     RESULTS_FILE = 'group_4_results.csv'
     groups_df = pd.read_csv(GROUP_CHALLENGE_VALIDATION)
     NUM_GROUPS = len(groups_df['group_id'].unique())
@@ -510,22 +514,53 @@ def calculate_score_on_validation():
     challenge_score = correct / NUM_GROUPS
 
     print(f"validation challenge score: {challenge_score:.2%}%")
+    return challenge_score * 100
+
+def convert_wave_to_nemo():
+    src_folder = C.SPEAKATHON_DATA_SUBSET / 'wav_files'
+    files_list = glob(os.path.join(src_folder, "**", "*.wav"), recursive=True)
+    logger.info('convert_wave_to_nemo start')
+    with ProcessPoolExecutor() as pool:
+        nemo_wav_files = pool.map(convert_to_nemo_format_using_pydub, files_list)
+    logger.info('convert_wave_to_nemo end')
 
 if __name__ == "__main__":
     init_logging()
+
+    file_path1 = '/workdir/data/gender_prob.json'
+    with open(file_path1, 'r') as json_file:
+        gender_prob= json.load(json_file)
+
+    file_path2 = '/workdir/data/gender_dict.json'
+    with open(file_path2, 'r') as json_file:
+        gender_dict = json.load(json_file)
+
+    gender_prob2 = {key: -1.0 if value=="female" else 1.0 for key, value in gender_dict.items()}
+
+    gender_prob.update(gender_prob2)
+    with open('/workdir/data/gender_prob2.json', "w") as json_file:
+        json.dump(gender_prob, json_file)
+
+
+    print(sign(0.05))
+    print(sign(-0.001))
     is_generate_stub_dataset = False
-    is_create_validation_dataset = True
-    is_generate_results = True
-    is_calculate_score_on_validation = True
+    is_convert_wave_to_nemo = True
+    is_create_validation_dataset = False
+    is_generate_results = False
+    is_calculate_score_on_validation = False
 
     # TODO:
     # replace encoder with our own
     import nemo.collections.asr as nemo_asr
 
-    speaker_model_path = C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
+    # speaker_model_path = C.DATA_DIR / f"{C.NEMO_MODEL_NAME}_ft.nemo"
+    speaker_model_path = C.DATA_DIR / 'titanet-large_not_segment_ft.nemo'
     encoder = nemo_asr.models.EncDecSpeakerLabelModel.restore_from(speaker_model_path)
-    audio_files_path = 'speakathon_data_subset/challenge'
-    challenge_path = 'speakathon_data_subset/groups_challenge_validation.csv'
+    audio_files_path =  C.DATA_DIR / 'wav_files'
+    challenge_path = C.DATA_DIR / 'groups_challenge_validation.csv'
+    hackathon_train_path = C.DATA_DIR / 'hackathon_train.csv'
+    validation_path = C.DATA_DIR / 'validation.csv'
 
     if is_generate_stub_dataset:
         logger.info("is_generate_stub_dataset")
@@ -537,13 +572,16 @@ if __name__ == "__main__":
 
         generate_stub_dataset(src_folder, dest_folder, 600)
 
+    if is_convert_wave_to_nemo:
+        convert_wave_to_nemo()
+
     if is_create_validation_dataset:
         logger.info("is_create_validation_dataset")
-        create_validation_dataset('hackathon_train.csv', audio_files_path)
+        create_validation_dataset(hackathon_train_path, audio_files_path)
 
     if is_generate_results:
         logger.info("is_generate_results")
-        generate_results(encoder, 'speakathon_data_subset/groups_challenge_validation.csv', audio_files_path)
+        generate_results(encoder, validation_path, audio_files_path)
 
     if is_calculate_score_on_validation:
         logger.info("calculate_score_on_validation")
